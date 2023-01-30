@@ -13,7 +13,7 @@ tags:
   - StarCTF
 ---
 
-+ Abusing a stack overflow on a RISC-V binary to then return to shellcode.
+Abusing a stack overflow on a RISC-V binary to then return to shellcode.
 
 <!--more-->
 
