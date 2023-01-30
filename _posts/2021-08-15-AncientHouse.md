@@ -13,9 +13,8 @@ tags:
   - InCTFi
 ---
 
-**tl;dr**
-+ Jemalloc heap challenge
-+ A buggy implementation of `strncat` in `merge` allows for an overwrite onto the next region 
+Jemalloc heap challenge
+A buggy implementation of `strncat` in `merge` allows for an overwrite onto the next region 
 
 **Challenge Points:** 540
 **No of Solves:** 31
