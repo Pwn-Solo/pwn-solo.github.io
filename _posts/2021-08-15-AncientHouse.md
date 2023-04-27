@@ -1,4 +1,5 @@
 ---
+layout: post
 title: Ancient House - InCTF Internationals 2021
 date: 2021-08-15 20:05:10
 author: Pwn-Solo

@@ -1,4 +1,5 @@
 ---
+layout: post
 title: Favourite Architecture-1 - StarCTF 2021
 date: 2021-01-20 20:05:10
 author: Pwn-Solo
