@@ -1,4 +1,18 @@
-# Quick Heal Kernel Driver LPE: Bypassing Self-Protection to Read SAM, SYSTEM, and SECURITY
+
+---
+layout: post
+title: Quick Heal Self Protection Bypass Vulnerability
+date: 2026-05-29 20:05:10
+author: Pwn-Solo
+author_url: https://twitter.com/Pwn_Solo
+categories:
+  - Pwn
+tags:
+  - Exploitation
+  - Windows
+  - Kernel
+  - Anti Virus
+---
 
 **Published:** May 2026  
 **Author:** Hrishikesh Pankaj  
