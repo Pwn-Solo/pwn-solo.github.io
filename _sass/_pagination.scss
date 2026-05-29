@@ -1,5 +1,5 @@
 .pagination { display: flex; gap: 1em; justify-content: center; margin: var(--space-xl) 0; list-style: none; padding: 0; }
-.pagination a, .pagination .page-item { padding: 0.75em 1.5em; border: 1px solid var(--border); border-radius: var(--radius); text-decoration: none; transition: all 0.2s; font-size: 1rem; }
-.pagination a { color: var(--link); border-color: var(--link); }
-.pagination a:hover { background: var(--link); color: white; border-color: var(--link); }
-.pagination .page-item { color: var(--secondary); }
+.pagination a, .pagination .page-item { padding: 0.75em 1.5em; border: 1px solid var(--border); border-radius: 0px; text-decoration: none; transition: all 0.2s; font-size: 1rem; color: var(--primary); }
+.pagination a { border-color: var(--primary); }
+.pagination a:hover { background: var(--primary); color: var(--background); border-color: var(--primary); }
+.pagination .page-item { color: var(--secondary); border: none; }

@@ -1,30 +1,19 @@
 :root {
-  --primary: #000;
-  --secondary: #666;
-  --light: #f5f5f5;
-  --lighter: #fafafa;
-  --border: #e5e5e5;
-  --link: #0066cc;
-  --link-hover: #0052a3;
+  --primary: #ffffff;
+  --secondary: #aaaaaa;
+  --background: #000000;
+  --border: #222222;
+  --link: #ffffff;
+  --link-hover: #cccccc;
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-size: 16px;
   --line-height: 1.6;
   --font-weight: 400;
   --font-weight-bold: 600;
-  --space-xs: 0.5rem;
   --space-sm: 1rem;
   --space-md: 1.5rem;
   --space-lg: 2rem;
   --space-xl: 3rem;
   --max-width: 900px;
-  --radius: 4px;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --primary: #fff;
-    --secondary: #999;
-    --light: #222;
-    --lighter: #1a1a1a;
-    --border: #333;
-  }
+  --radius: 0px;
 }

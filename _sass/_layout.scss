@@ -2,11 +2,10 @@
 body { display: flex; flex-direction: column; min-height: 100vh; }
 main { flex: 1; }
 .content { padding: var(--space-xl) 0; }
-.header { border-bottom: 1px solid var(--border); padding: var(--space-lg) 0; margin-bottom: var(--space-xl); background: white; }
-@media (prefers-color-scheme: dark) { .header { background: #000; } }
+.header { border-bottom: 1px solid var(--border); padding: var(--space-lg) 0; margin-bottom: var(--space-xl); }
 .header-title { margin: 0; font-size: 2rem; font-weight: var(--font-weight-bold); letter-spacing: -0.5px; }
 .header-title a { color: var(--primary); border: none; }
-.header-title a:hover { color: var(--link); }
+.header-title a:hover { color: var(--link-hover); }
 .nav { display: flex; gap: var(--space-lg); margin-top: var(--space-md); list-style: none; padding: 0; }
 .nav a { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--secondary); border: none; transition: color 0.2s; }
 .nav a:hover { color: var(--primary); }
