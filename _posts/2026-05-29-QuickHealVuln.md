@@ -1,4 +1,3 @@
-
 ---
 layout: post
 title: Quick Heal Self Protection Bypass Vulnerability
@@ -12,15 +11,6 @@ tags:
   - Windows
   - Kernel
   - Anti Virus
----
-
-**Published:** May 2026  
-**Author:** Hrishikesh Pankaj  
-**Severity:** Critical  
-**Affected:** Quick Heal AntiVirus Pro & Total Security (Installer v26, Driver v24.0.0.21)  
-**Fixed:** April 28, 2026 (Product and driver update)  
-**CVE:** Pending
-
 ---
 
 ## Overview
