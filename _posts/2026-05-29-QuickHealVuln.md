@@ -2,15 +2,6 @@
 layout: post
 title: Quick Heal Self Protection Bypass Vulnerability
 date: 2026-05-29 20:05:10
-author: Pwn-Solo
-author_url: https://twitter.com/Pwn_Solo
-categories:
-  - Pwn
-tags:
-  - Exploitation
-  - Windows
-  - Kernel
-  - Anti Virus
 ---
 
 ## Overview
@@ -21,7 +12,7 @@ The most severe consequence: a non-admin user can dump the Windows SAM, SYSTEM, 
 
 No administrator privileges. No UAC bypass. No user interaction. Entirely user-mode code.
 
----
+
 
 ## Affected Components
 
@@ -34,7 +25,7 @@ Quick Heal's kernel-mode protection relies on two filter drivers that communicat
 
 The intended design is that only Quick Heal's own service process (`arwsrvc.exe`) can connect to these ports. In practice, any process can.
 
----
+
 
 ## Vulnerability 1: Authentication Bypass in GGCMessagePort (ggc.sys)
 
@@ -78,7 +69,7 @@ bool __fastcall sub_FFFFF802A3E5DCA8(unsigned __int64 a1)
 }
 ```
 
----
+
 
 ## Vulnerability 2: Privileged File System Access via CatfltEventCommPort (catflt.sys)
 
@@ -108,7 +99,7 @@ Once connected, the port's `MessageNotifyCallback` handler exposes kernel-level 
 
 **Command 32 is the most powerful.** It opens any file using `FltCreateFile` with kernel privileges, then duplicates the handle from the SYSTEM process into the caller's process using `ZwDuplicateObject`. The returned handle bypasses all ACL checks and can be used with standard Win32 `ReadFile`/`WriteFile` APIs from a non-privileged process.
 
----
+
 
 ## Attack Chain
 
@@ -139,7 +130,7 @@ The full exploit requires six steps, all executable from a standard non-elevated
    └── Read any file including SAM, SYSTEM, SECURITY
 ```
 
----
+
 
 ## Proof of Concept
 
@@ -179,7 +170,7 @@ The three dumped files can then be processed with standard tools to extract all 
 impacket-secretsdump -sam sam_dump.bin -system system_dump.bin -security security_dump.bin LOCAL
 ```
 
----
+
 
 ## Impact
 
@@ -195,7 +186,7 @@ The exposed commands allow an attacker to overwrite system binaries, delete audi
 ### Self-Protection Bypass
 Quick Heal's kernel-level trust mechanism is completely disabled for the duration of the attack, rendering all process-based protection ineffective.
 
----
+
 
 ## Root Cause
 
@@ -210,7 +201,7 @@ The port should have a restrictive DACL limiting connections to Quick Heal's ser
 **3. Privileged kernel operations exposed without layered authorization**  
 `FltCreateFile`, `FltReadFile`, and `ZwDuplicateObject` operating in kernel context should not be reachable from user-mode via a communication port with no secondary authorization. Defense in depth requires that privileged operations verify caller identity independently of a single bypassable trust flag.
 
----
+
 
 ## Remediation
 
@@ -228,7 +219,7 @@ Recommended remediation for the underlying issues:
 - Add secondary authorization checks in `MessageNotifyCallback` that verify caller identity independently of the ggc trust mechanism
 - Audit all filter communication port handlers for privileged operations accessible to untrusted callers
 
----
+
 
 ## Disclosure Timeline
 
@@ -242,7 +233,7 @@ Recommended remediation for the underlying issues:
 | May 2026 | Quick Heal confirmed fix and notified reporter |
 | May 2026 | Public disclosure |
 
----
+
 
 ## References
 
@@ -251,7 +242,7 @@ Recommended remediation for the underlying issues:
 - ZwDuplicateObject (Microsoft Docs)
 - CVE pending assignment
 
----
+
 
 *Hrishikesh Pankaj — Security Researcher*  
 *hrishikeshpankaj12@gmail.com | pwn-solo.github.io*
