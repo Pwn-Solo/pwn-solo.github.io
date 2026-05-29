@@ -20,10 +20,12 @@ No administrator privileges. No UAC bypass. No user interaction. Entirely user-m
 
 Quick Heal's kernel mode protection relies on two filter drivers that communicate with user mode processes via Filter Communication Ports:
 
+<div markdown="1" style="background-color: #1e1e1e; border: 1px solid #444444; border-radius: 6px; padding: 15px; margin: 20px 0;">
 | Driver | Port | Purpose |
 |---|---|---|
 | `ggc.sys` | `\GGCMessagePort` | Core protection driver. Manages process trust decisions via IOCTL-based trust verification. |
 | `catflt.sys` | `\CatfltEventCommPort` | Catalog filter driver. Exposes privileged kernel file system operations to trusted callers. |
+</div>
 
 The intended design is that only Quick Heal's own service process (`arwsrvc.exe`) can connect to these ports. In practice, any process can.
 
@@ -91,6 +93,7 @@ A NULL DACL grants full access to everyone. Any process can connect to this port
 
 Once connected, the port's `MessageNotifyCallback` handler exposes kernel level file system operations directly to user mode:
 
+<div markdown="1" style="background-color: #1e1e1e; border: 1px solid #444444; border-radius: 6px; padding: 15px; margin: 20px 0;">
 | Command | Operation | Kernel API |
 |---|---|---|
 | 25 | Arbitrary file read | `FltReadFile` |
@@ -98,6 +101,7 @@ Once connected, the port's `MessageNotifyCallback` handler exposes kernel level 
 | 27 | Arbitrary file delete | `FltCreateFile` + `FILE_DELETE_ON_CLOSE` |
 | 28 | Arbitrary file rename | `FltSetInformationFile(FileRenameInformation)` |
 | 32 | Kernel file open → usermode handle | `FltCreateFile` + `ZwDuplicateObject` from SYSTEM |
+</div>
 
 <br>
 
