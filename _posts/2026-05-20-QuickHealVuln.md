@@ -8,9 +8,9 @@ A high-severity privilege escalation vulnerability I discovered in Quick Heal an
 
 ## Overview
 
-Quick Heal is one of India's most widely deployed antivirus products, used across millions of consumer and enterprise endpoints. This post documents a chain of vulnerabilities I found in two of its kernel drivers — `ggc.sys` and `catflt.sys` — that allow a standard non-privileged Windows user to completely bypass the product's self-protection mechanism and gain unrestricted read, write, delete, and rename access to any file on the system.
+Quick Heal is one of India's most widely deployed antivirus products, used across millions of consumer and enterprise endpoints. This post documents a chain of vulnerabilities I found in two of its kernel drivers `ggc.sys` and `catflt.sys` that allow a standard non-privileged Windows user to completely bypass the product's self-protection mechanism and gain unrestricted read, write, delete, and rename access to any file on the system.
 
-The most severe consequence: a non-admin user can dump the Windows SAM, SYSTEM, and SECURITY registry hives — the files containing every local user's NTLM password hash — without triggering any alert from the very product designed to prevent this.
+The most severe consequence: a non-admin user can dump the Windows SAM, SYSTEM, and SECURITY registry hives the files containing every local user's NTLM password hash without triggering any alert from the very product designed to prevent this.
 
 No administrator privileges. No UAC bypass. No user interaction. Entirely user-mode code.
 
@@ -18,7 +18,7 @@ No administrator privileges. No UAC bypass. No user interaction. Entirely user-m
 
 ## Affected Components
 
-Quick Heal's kernel-mode protection relies on two filter drivers that communicate with user-mode processes via Filter Communication Ports:
+Quick Heal's kernel mode protection relies on two filter drivers that communicate with user mode processes via Filter Communication Ports:
 
 | Driver | Port | Purpose |
 |---|---|---|
@@ -47,7 +47,7 @@ XorCookie(cookie, 32, pid)   // XOR encrypt with own PID as key
 
 The encryption key is the caller's own PID. The authentication check verifies that the decrypted cookie contains the caller's own PID. Since every process knows its own PID, every process can construct a perfectly valid authentication cookie.
 
-This is circular authentication — the secret is the value being verified. It provides no access control whatsoever.
+This is circular authentication the secret is the value being verified. It provides no access control whatsoever.
 
 ### Impact
 
@@ -85,11 +85,11 @@ RtlSetDaclSecurityDescriptor(SecurityDescriptor, 1u, 0i64, 0);
 FltCreateCommunicationPort(..., MaxConnections: 4096);
 ```
 
-A NULL DACL grants full access to everyone. Any process can connect to this port. The only intended barrier was the ggc trust check — which we already bypassed.
+A NULL DACL grants full access to everyone. Any process can connect to this port. The only intended barrier was the ggc trust check which we already bypassed.
 
 ### Privileged Operations Exposed
 
-Once connected, the port's `MessageNotifyCallback` handler exposes kernel-level file system operations directly to user-mode:
+Once connected, the port's `MessageNotifyCallback` handler exposes kernel level file system operations directly to user mode:
 
 | Command | Operation | Kernel API |
 |---|---|---|
@@ -98,6 +98,8 @@ Once connected, the port's `MessageNotifyCallback` handler exposes kernel-level 
 | 27 | Arbitrary file delete | `FltCreateFile` + `FILE_DELETE_ON_CLOSE` |
 | 28 | Arbitrary file rename | `FltSetInformationFile(FileRenameInformation)` |
 | 32 | Kernel file open → usermode handle | `FltCreateFile` + `ZwDuplicateObject` from SYSTEM |
+
+<br>
 
 **Command 32 is the most powerful.** It opens any file using `FltCreateFile` with kernel privileges, then duplicates the handle from the SYSTEM process into the caller's process using `ZwDuplicateObject`. The returned handle bypasses all ACL checks and can be used with standard Win32 `ReadFile`/`WriteFile` APIs from a non-privileged process.
 
@@ -177,7 +179,7 @@ impacket-secretsdump -sam sam_dump.bin -system system_dump.bin -security securit
 ## Impact
 
 ### Credential Theft
-The SAM, SYSTEM, and SECURITY hives contain every local user's NTLM password hash. These can be cracked offline or used directly in pass-the-hash attacks to gain administrator access — all from a standard user account.
+The SAM, SYSTEM, and SECURITY hives contain every local user's NTLM password hash. These can be cracked offline or used directly in pass-the-hash attacks to gain administrator access all from a standard user account.
 
 ### Arbitrary File Read
 Any file on the system regardless of ACLs, including files locked by other processes, files protected by mandatory integrity controls, Windows credential stores, certificate private keys, and Quick Heal's own configuration files.
@@ -186,7 +188,7 @@ Any file on the system regardless of ACLs, including files locked by other proce
 The exposed commands allow an attacker to overwrite system binaries, delete audit logs, or rename files to facilitate DLL hijacking against privileged processes.
 
 ### Self-Protection Bypass
-Quick Heal's kernel-level trust mechanism is completely disabled for the duration of the attack, rendering all process-based protection ineffective.
+Quick Heal's kernel level trust mechanism is completely disabled for the duration of the attack, rendering all process based protection ineffective.
 
 
 
@@ -201,7 +203,7 @@ Using the caller's own PID as both the XOR encryption key and the verified value
 The port should have a restrictive DACL limiting connections to Quick Heal's service account (`NT AUTHORITY\SYSTEM` or a dedicated service SID). Relying solely on the ggc trust check as the access control boundary is insufficient given how easily it can be bypassed.
 
 **3. Privileged kernel operations exposed without layered authorization**  
-`FltCreateFile`, `FltReadFile`, and `ZwDuplicateObject` operating in kernel context should not be reachable from user-mode via a communication port with no secondary authorization. Defense in depth requires that privileged operations verify caller identity independently of a single bypassable trust flag.
+`FltCreateFile`, `FltReadFile`, and `ZwDuplicateObject` operating in kernel context should not be reachable from user mode via a communication port with no secondary authorization. Defense in depth requires that privileged operations verify caller identity independently of a single bypassable trust flag.
 
 
 
@@ -209,7 +211,7 @@ The port should have a restrictive DACL limiting connections to Quick Heal's ser
 
 Quick Heal released a patch on **April 28, 2026** addressing these issues. The fix was delivered via the standard product and driver update mechanism.
 
-Users running Quick Heal AntiVirus Pro or Total Security should verify they are on the latest version. The affected driver version is `24.0.0.21` — check your installed driver version via Device Manager or:
+Users running Quick Heal AntiVirus Pro or Total Security should verify they are on the latest version. The affected driver version is `24.0.0.21` check your installed driver version via Device Manager or:
 
 ```
 Get-WmiObject Win32_SystemDriver | Where-Object {$_.Name -like "*ggc*" -or $_.Name -like "*catflt*"} | Select Name, Version
