@@ -1,7 +1,7 @@
 ---
 layout: post
 title: Quick Heal Self Protection Bypass Vulnerability
-date: 2026-05-29 20:05:10
+date: 2026-05-20 20:05:10
 ---
 
 ## Overview
