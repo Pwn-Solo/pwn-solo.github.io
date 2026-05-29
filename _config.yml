@@ -25,3 +25,7 @@ nav:
     url: /archive
   - title: About
     url: /about
+
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
