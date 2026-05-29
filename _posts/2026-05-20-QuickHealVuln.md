@@ -4,6 +4,8 @@ title: Quick Heal Self Protection Bypass Vulnerability
 date: 2026-05-20 20:05:10
 ---
 
+A high-severity privilege escalation vulnerability I discovered in Quick Heal antivirus kernel drivers (ggc.sys and catflt.sys). By exploiting circular authentication and insecure communication ports, I demonstrated how a non-privileged user can completely bypass self-protection to read, write, or delete any system file, including local credential hives.
+
 ## Overview
 
 Quick Heal is one of India's most widely deployed antivirus products, used across millions of consumer and enterprise endpoints. This post documents a chain of vulnerabilities I found in two of its kernel drivers — `ggc.sys` and `catflt.sys` — that allow a standard non-privileged Windows user to completely bypass the product's self-protection mechanism and gain unrestricted read, write, delete, and rename access to any file on the system.
