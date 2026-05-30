@@ -198,8 +198,6 @@ Quick Heal's kernel level trust mechanism is completely disabled for the duratio
 
 ## Root Cause
 
-Three independent design flaws combine to create this vulnerability chain:
-
 **1. Circular authentication in GGCMessagePort**  
 Using the caller's own PID as both the XOR encryption key and the verified value means any process can authenticate. A correct implementation would use a shared secret established at driver load time, unknown to user-mode callers.
 
@@ -211,21 +209,9 @@ The port should have a restrictive DACL limiting connections to Quick Heal's ser
 
 
 
-## Remediation
+## Bug Fix
 
 Quick Heal released a patch on **April 28, 2026** addressing these issues. The fix was delivered via the standard product and driver update mechanism.
-
-Users running Quick Heal AntiVirus Pro or Total Security should verify they are on the latest version. The affected driver version is `24.0.0.21` check your installed driver version via Device Manager or:
-
-```
-Get-WmiObject Win32_SystemDriver | Where-Object {$_.Name -like "*ggc*" -or $_.Name -like "*catflt*"} | Select Name, Version
-```
-
-Recommended remediation for the underlying issues:
-- Replace PID-based cookie authentication with a cryptographic challenge-response mechanism using a secret established at driver load time
-- Apply a restrictive DACL to `CatfltEventCommPort` limiting connections to Quick Heal's service account
-- Add secondary authorization checks in `MessageNotifyCallback` that verify caller identity independently of the ggc trust mechanism
-- Audit all filter communication port handlers for privileged operations accessible to untrusted callers
 
 
 
@@ -241,14 +227,6 @@ Recommended remediation for the underlying issues:
 | May 2026 | Quick Heal confirmed fix and notified reporter |
 | May 2026 | Public disclosure |
 
-
-
-## References
-
-- Quick Heal Vulnerability Rewards Program: http://dlupdate.quickheal.com/documents/company_policies/Vulnerability_Rewards_Program.pdf
-- FltCreateCommunicationPort (Microsoft Docs)
-- ZwDuplicateObject (Microsoft Docs)
-- CVE pending assignment
 
 
 
